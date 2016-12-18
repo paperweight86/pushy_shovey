@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="pcars">
+      <UniqueIdentifier>{82f65906-49e7-4272-9cd2-8e3ac71d8950}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="pcars\pcars_memory_frame.h">
+      <Filter>pcars</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
