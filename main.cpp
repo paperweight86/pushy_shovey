@@ -131,7 +131,7 @@ void report_thread(reporter_info* info)
 
 	bool write_file = false;
 	const char* username = "pushy_reporter";
-	const char* password = "pidgeonbeastquark";
+	const char* password = "";
 	MYSQL pushydb = {};
 	mysql_init(&pushydb);
 	MYSQL* connect_result = mysql_real_connect(&pushydb, "192.168.0.8", username, password, "test", 0, 0, CLIENT_COMPRESS);
