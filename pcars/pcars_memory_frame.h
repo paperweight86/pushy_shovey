@@ -277,8 +277,7 @@ struct pcars_memory_frame
 
 	// Racing Flags
 	race_flag		 m_highest_flag_colour;             
-	race_flag_reason m_highest_flag_reason;      
-
+	race_flag_reason m_highest_flag_reason;
 													 
 	pit_mode m_pit_mode;                          
 	pit_schedule m_pit_schedule;                  

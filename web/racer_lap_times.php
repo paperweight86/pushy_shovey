@@ -335,14 +335,14 @@ if($result->num_rows > 0)
 	while($row = $result->fetch_assoc())
 	{
 		echo "<div class=\"lap-item\">";
-		if($i > 3)
+		//if($i > 3)
         {
         	echo "<div class=\"lap-time-container-".($i%2)."\">";
         }
-        else 
-        {
-        	echo "<div class=\"lap-time-container-".$i."-place\">";
-        }
+        //else 
+        //{
+        //	echo "<div class=\"lap-time-container-".$i."-place\">";
+        //}
         echo "<div class=\"lap-date-item\"><span>";
 		echo $row["date_time"];
 		echo "</span></div>";

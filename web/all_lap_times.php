@@ -4,8 +4,8 @@
 <style> 
 body
 {
-	background-color: #000000;
-	color: #ffffff;
+    background-color: #000000;
+    color: #ffffff;
     text-align: center;
 }
 
@@ -56,6 +56,14 @@ h1
 {
     text-align: center;
     font-family: Arial,"Helvetica Neue",Helvetica,sans-serif;
+}
+
+a
+{
+    font-family: Arial,"Helvetica Neue",Helvetica,sans-serif;
+    //color: #FFF;
+    color: inherit;
+    text-decoration: none;
 }
 
 .page-aligner
@@ -155,13 +163,18 @@ h1
     padding: 4px;
 }
 
-.lap-date-item {
+.lap-racer-item {
     flex-basis: 263px;
 }
 
 .lap-time-item {
-    flex-basis: 200px;
+    flex-basis: 245px;
     margin-left: 4px;
+}
+
+.lap-place-item {
+    //flex-basis: 32px;
+    margin-right: 0px;
 }
 
 span {
@@ -195,11 +208,9 @@ function timespan_to_string($seconds) {
 
 $track_name = "Snetterton: 100 Circuit";
 $car_name   = "W Motors Lykan HyperSport";
-$racer_id = "2182080";
 
 $track_id = "";
 $car_id = "";
-$racer_id = "";
 
 if($_GET['track_id'] != "")
 {
@@ -219,11 +230,6 @@ else if($_GET['car'] != "")
     $car_name = $conn->real_escape_string($_GET['car']);
 }
 
-if($_GET['racer_id'] != "")
-{
-    $racer_id = $conn->real_escape_string($_GET['racer_id']);
-}
-
 if($track_id == "")
 {
     $track_sql = "SELECT id FROM `pcars_tracks` WHERE `track_name` LIKE '". $track_name ."'";
@@ -231,8 +237,8 @@ if($track_id == "")
     $result = $conn->query($track_sql);
     if($result->num_rows > 0)
     {
-    	$row = $result->fetch_assoc();
-    	$track_id = $row['id'];
+        $row = $result->fetch_assoc();
+        $track_id = $row['id'];
     }
 }
 
@@ -243,8 +249,8 @@ if($car_id == "")
     $result = $conn->query($car_sql);
     if($result->num_rows > 0)
     {
-    	$row = $result->fetch_assoc();
-    	$car_id = $row['id'];
+        $row = $result->fetch_assoc();
+        $car_id = $row['id'];
     }
 }
 
@@ -284,25 +290,6 @@ if($result->num_rows > 0)
     echo "</select>";
 }
 echo "</br>";
-
-$sql_racers = "SELECT * FROM `pcars_racers`";
-$result = $conn->query($sql_racers);
-$racer_dict = array();
-if($result->num_rows > 0) 
-{   
-    echo "<select name=\"racer_id\">";
-    while($row = $result->fetch_assoc())
-    {
-        $racer_dict[$row['steam_id']] = $row['steam_nickname'];
-        if($racer_id != $row["steam_id"])
-            echo "    <option value=\"".$row["steam_id"]."\">".$row["steam_nickname"]."</option>";
-        else
-            echo "    <option value=\"".$row["steam_id"]."\" selected=\"true\">".$row["steam_nickname"]."</option>";
-    }
-    echo "</select>";
-}
-
-echo "</br>";
 echo "<button type=\"submit\">Show</button>";
 echo "<form/>";
 echo "</br>";
@@ -315,50 +302,65 @@ echo "<div class=\"page-aligner\">";
 echo "<div class=\"lap-container\">";
 echo "<div class=\"lap-item\">";
 echo "<div class=\"lap-time-container-header\">";
-echo "<div class=\"lap-date-item\">";
-echo "<span>Date</span>";
+echo "<div class=\"lap-racer-item\">";
+echo "<span>Name</span>";
 echo "</div>";
 echo "<div class=\"lap-time-item\">";
 echo "<span>Time</span>";
 echo "</div>";
 
-$sql = "SELECT * FROM `pcars_lap_times` WHERE racer_id = '".$racer_id."' AND car_id = '".$car_id."'  ORDER BY `date_time` DESC";
-// TODO: [DanJ] Get fastest time and highlight in gold!
-
-// LEFT JOIN `pcars_racers` on arse.`racer_id` = `pcars_racers`.`steam_id` LEFT JOIN `pcars_tracks` on arse.`track_id` = `pcars_tracks`.`id` LEFT JOIN `pcars_cars` on arse.`car_id` = `pcars_cars`.`id` WHERE `track_id`=". $track_id ." AND `car_id`=".$car_id." ORDER BY arse.`lap_time` ASC
+$sql = "SELECT * FROM `pcars_lap_times` arse INNER JOIN ( SELECT `racer_id`, MIN(`lap_time`) `lap_time` FROM `pcars_lap_times` WHERE `track_id`=". $track_id ." AND `car_id`=".$car_id." GROUP BY `racer_id`) bt ON arse.`racer_id` = bt.`racer_id` AND arse.`lap_time` = bt.`lap_time` LEFT JOIN `pcars_racers` on arse.`racer_id` = `pcars_racers`.`steam_id` LEFT JOIN `pcars_tracks` on arse.`track_id` = `pcars_tracks`.`id` LEFT JOIN `pcars_cars` on arse.`car_id` = `pcars_cars`.`id` WHERE `track_id`=". $track_id ." AND `car_id`=".$car_id." ORDER BY arse.`lap_time` ASC";
 $result = $conn->query($sql);
 if($result->num_rows > 0) 
 {   
     echo "</div>";
-	echo "</div>";
+    echo "</div>";
     $i = 1;
-	while($row = $result->fetch_assoc())
-	{
-		echo "<div class=\"lap-item\">";
-		if($i > 3)
+    while($row = $result->fetch_assoc())
+    {
+        echo "<div class=\"lap-item\">";
+        if($i > 3)
         {
-        	echo "<div class=\"lap-time-container-".($i%2)."\">";
+            echo "<div class=\"lap-time-container-".($i%2)."\">";
         }
         else 
         {
-        	echo "<div class=\"lap-time-container-".$i."-place\">";
+            echo "<div class=\"lap-time-container-".$i."-place\">";
         }
-        echo "<div class=\"lap-date-item\"><span>";
-		echo $row["date_time"];
-		echo "</span></div>";
-		echo "<div class=\"lap-time-item\"><span>";
-		echo timespan_to_string($row["lap_time"]);
-		echo "</span></div>";
-		echo "</div>";
+        echo "<div class=\"lap-racer-item\"><span>";
+        echo "<a href=\"racer_lap_times.php?track_id=".$track_id."&car_id=".$car_id."&racer_id=".$row['steam_id']."\">".$row["steam_nickname"]."</a>";
+        echo "</span></div>";
+        echo "<div class=\"lap-time-item\"><span>";
+        echo timespan_to_string($row["lap_time"]);
+        echo "</span></div>";
+        if($i % 10 > 3 || $i % 10 == 0)
+        {
+            echo "<div class=\"lap-place-item\">".$i."th";
+        }
+        else if( $i % 10 == 1 )
+        {
+            echo "<div class=\"lap-place-item\">".$i."st";   
+        }
+        else if( $i % 10 == 2 )
+        {
+            echo "<div class=\"lap-place-item\">".$i."nd";
+        }
+        else if( $i % 10 == 3 )
+        {
+            echo "<div class=\"lap-place-item\">".$i."rd";
+        }
+        
+        echo "</div>";
+        echo "</div>";
         echo "</div>";
         $i += 1;
-	}
+    }
     echo "</div>";
     echo "</div>";
 }
 else
 {
-	echo "No results for track \"".$track_name."\" (".$track_id.") and car \"".$car_name."\" (".$car_id.") were found!";
+    echo "No results for track \"".$track_name."\" (".$track_id.") and car \"".$car_name."\" (".$car_id.") were found!";
 }
 
 $conn->close();
