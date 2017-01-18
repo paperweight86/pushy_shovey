@@ -24,6 +24,7 @@ Race Reporting:
 - Report positions of racers (or only self?)
 
 Website:
+- Lap times between dates (i.e. Sunday->Sunday)
 - Race callendar
 - Admin race callendar
 - Race results
@@ -99,6 +100,7 @@ struct reporter_info
 	std::atomic<laptime_status>		lap_status;
 	std::atomic<bool>				reported_lap;
 	std::atomic<bool>				reported_fastest_lap;
+	std::atomic<bool>				saved_replay_video;
 };
 
 const char* GetReporterStatusString(reporter_status status)
@@ -181,13 +183,82 @@ bool can_record_race_file()
 	return false;
 }
 
+void save_replay_video()
+{
+	INPUT inputs[1] = {};
+	inputs[0].type = INPUT_KEYBOARD;
+	inputs[0].ki.wVk = VK_MENU;
+	//inputs[0].ki.dwFlags = KEYEVENTF_SCANCODE;
+	//inputs[0].ki.wScan = MapVirtualKey(VK_MENU, MAPVK_VK_TO_VSC);
+
+	//inputs[1].ki.dwFlags = KEYEVENTF_SCANCODE;
+	//inputs[1].ki.wScan = MapVirtualKey(VK_F11, MAPVK_VK_TO_VSC);
+
+	//inputs[2].type = INPUT_KEYBOARD;
+	//inputs[2].ki.wVk = VK_MENU;
+	//inputs[2].ki.dwFlags = KEYEVENTF_KEYUP;
+	//
+	//inputs[3].type = INPUT_KEYBOARD;
+	//inputs[3].ki.wVk = VK_F11;
+	//inputs[3].ki.dwFlags = KEYEVENTF_KEYUP;
+
+	SendInput(ARRAYSIZE(inputs), inputs, sizeof(INPUT));
+	TIMECAPS tc = {};
+	timeGetDevCaps(&tc, sizeof(TIMECAPS));
+	Sleep(50);
+	
+	inputs[0].type = INPUT_KEYBOARD;
+	inputs[0].ki.wVk = VK_F11;
+	
+	SendInput(ARRAYSIZE(inputs), inputs, sizeof(INPUT));
+	
+	Sleep(50);
+
+	//
+	//Sleep(1000);
+
+	//inputs[2].type = INPUT_KEYBOARD;
+	//inputs[2].ki.wVk = VK_MENU;
+	//inputs[2].ki.dwFlags = KEYEVENTF_SCANCODE | KEYEVENTF_KEYUP;
+	//inputs[2].ki.wScan = MapVirtualKey(VK_MENU, MAPVK_VK_TO_VSC);
+	//
+	//inputs[3].type = INPUT_KEYBOARD;
+	//inputs[3].ki.wVk = VK_F11;
+	//inputs[3].ki.dwFlags = KEYEVENTF_SCANCODE | KEYEVENTF_KEYUP;
+	//inputs[3].ki.wScan = MapVirtualKey(VK_F11, MAPVK_VK_TO_VSC);
+
+	//inputs[2].type = INPUT_KEYBOARD;
+	//inputs[2].ki.wVk = VK_MENU;
+	//inputs[2].ki.dwFlags = KEYEVENTF_KEYUP;
+	//
+	//inputs[3].type = INPUT_KEYBOARD;
+	//inputs[3].ki.wVk = VK_F11;
+	//inputs[3].ki.dwFlags = KEYEVENTF_KEYUP;
+
+	inputs[0].type = INPUT_KEYBOARD;
+	inputs[0].ki.wVk = VK_MENU;
+	inputs[0].ki.dwFlags = KEYEVENTF_KEYUP;
+
+	SendInput(ARRAYSIZE(inputs), inputs, sizeof(INPUT));
+
+	inputs[0].type = INPUT_KEYBOARD;
+	inputs[0].ki.wVk = VK_F11;
+	inputs[0].ki.dwFlags = KEYEVENTF_KEYUP;
+
+	SendInput(ARRAYSIZE(inputs), inputs, sizeof(INPUT));
+
+	//Sleep(100);
+
+	//SendInput(ARRAYSIZE(inputs), inputs, sizeof(INPUT));
+}
+
 void report_thread_func(reporter_info* info)
 {
 	info->status = reporter_status_loading;
 
 	bool write_file = false;
-	const char* username = "";
-	const char* password = "";
+	const char* username = "pushy_reporter";
+	const char* password = "Zqn5w4BPcqjFCafC";
 	MYSQL pushydb = {};
 	mysql_init(&pushydb);
 	MYSQL* connect_result = mysql_real_connect(&pushydb, "192.168.0.8", username, password, "test", 0, 0, CLIENT_COMPRESS);
@@ -278,6 +349,15 @@ wait:
 		bool last_lap_time_valid = false;
 		bool have_steam_nickname = false;
 
+		// Video clips
+		bool  saved_start_video = false;
+		float start_video_delay = 20.0f;
+		float cool_down = 15.0f;
+		float active_cool_down = 0.0f;
+		float warm_up = 15.0f;
+		float active_warm_up = 0.0f;
+		float end_warm_up = 5.0f;
+
 		while (	   info->status != reporter_status_fatal_error 
 				&& info->status != reporter_status_none )
 		{
@@ -286,6 +366,29 @@ wait:
 
 			ElapsedMicroseconds.QuadPart *= 1000000;
 			ElapsedMicroseconds.QuadPart /= Frequency.QuadPart;
+			QueryPerformanceCounter(&StartingTime);
+
+			float elapsed_frame_time = (float)(ElapsedMicroseconds.QuadPart) / 1000.0f / 1000.0f;
+			if (active_cool_down > 0.0f)
+				active_cool_down -= elapsed_frame_time;
+
+			if (active_warm_up != 0.0f)
+				active_warm_up -= elapsed_frame_time;
+
+			if (active_cool_down < 0.0f)
+				active_cool_down = 0.0f;
+
+			if (active_warm_up < 0.0f)
+			{
+				saved_start_video = true;
+				save_replay_video();
+				info->saved_replay_video = true;
+				active_cool_down = cool_down;
+
+				active_warm_up = 0.0f;
+
+				printf("saved video!\n");
+			}
 
 			Sleep(1000 / 10);
 
@@ -410,6 +513,39 @@ wait:
 				{
 					// TODO:  We need to know if the race we're in is even a valid one but should do that async
 
+					if (active_warm_up == 0.0f && active_cool_down == 0.0f)
+					{
+						// Start of the race
+						if (!saved_start_video && this_frame->m_currentTime > start_video_delay)
+						{
+							printf("Saving start video %f from lap start\n", this_frame->m_currentTime);
+							active_warm_up = 0.0001f;
+							saved_start_video = true;
+						}
+						else if (saved_start_video)
+						{
+							// End of the race
+							if (active_cool_down <= 0.0f && this_frame->m_race_state == race_state_finished && last_frame->m_race_state == race_state_racing)
+							{
+								printf("Saving end video\n");
+								active_warm_up = end_warm_up;
+							}
+
+							// Position change
+							else if (active_cool_down <= 0.0f && this_frame->racers[this_frame->m_viewed_racer_index].m_race_position != last_frame->racers[this_frame->m_viewed_racer_index].m_race_position)
+							{
+								printf("Saving position change video\n");
+								active_warm_up = warm_up;
+							}
+
+							// Collision
+							else if (active_cool_down <= 0.0f && (this_frame->m_last_opponent_collision_index != last_frame->m_last_opponent_collision_index
+								|| this_frame->m_last_opponent_collision_magnitude != last_frame->m_last_opponent_collision_magnitude))
+							{
+								active_warm_up = warm_up;
+							}
+						}
+					}
 				}
 
 				current_lap_time_valid =   !this_frame->m_lap_invalidated
@@ -423,8 +559,6 @@ wait:
 				pcars_memory_frame* tmp = last_frame;
 				last_frame = this_frame;
 				this_frame = tmp;
-
-				QueryPerformanceCounter(&StartingTime);
 			}
 			else if (should_read)
 			{
@@ -677,6 +811,18 @@ void music_thread_func(midi_thread_data* data)
 			midi_all_keys_off(device, channel);
 		}
 
+		if (data->reporter_info->saved_replay_video)
+		{
+			data->reporter_info->saved_replay_video = false;
+			midi_key_on(device, 90, volume, channel);
+			Sleep(100);
+			midi_key_on(device, 100, volume, channel);
+			Sleep(100);
+			midi_key_on(device, 90, volume, channel);
+			Sleep(100);
+			midi_all_keys_off(device, channel);
+		}
+
 		last_status = data->reporter_info->status;
 
 		Sleep(100);
@@ -685,6 +831,9 @@ void music_thread_func(midi_thread_data* data)
 
 void main()
 {
+	//save_replay_video();
+	//return;
+
 	midi_thread_data midi_data = {};
 
 	reporter_info reporter = {};

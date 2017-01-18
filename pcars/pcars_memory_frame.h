@@ -232,7 +232,7 @@ struct pcars_memory_frame
 
 	game_state m_game_state;                     
 	session_state m_session_state;               
-	race_state m_raceState;                      
+	race_state m_race_state;                      
 
 	int m_viewed_racer_index;   // [ RANGE = 0->max_racers ]   [ UNSET = -1 ]
 	int m_num_racers;			// [ RANGE = 0->max_racers ]   [ UNSET = -1 ]
